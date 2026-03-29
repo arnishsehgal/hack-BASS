@@ -9,13 +9,32 @@ import { Cpu } from "lucide-react";
 
 interface ModelViewer3DProps {
   isReady: boolean;
-  onWallSelect: (wall: WallType | null) => void;
+  elements?: any[]; // The real element array dynamically populated
+  onWallSelect: (wall: any | null) => void;
   selectedWallId?: string | null;
 }
 
-const Wall: React.FC<{ wall: WallType; onSelect: (wall: WallType) => void; isSelected: boolean }> = ({ wall, onSelect, isSelected }) => {
+const calculateWallTransform = (p1: [number, number], p2: [number, number], height: number = 3) => {
+  const dx = p2[0] - p1[0];
+  const dz = p2[1] - p1[1];
+  const length = Math.sqrt(dx * dx + dz * dz);
+  
+  const angle = Math.atan2(dz, dx);
+  const midX = p1[0] + dx / 2;
+  const midZ = p1[1] + dz / 2;
+  
+  return {
+    dimensions: [length, height, 0.2] as [number, number, number],
+    position: [midX, height / 2, midZ] as [number, number, number],
+    rotation: [0, -angle, 0] as [number, number, number],
+  };
+};
+
+const Wall: React.FC<{ wall: any; onSelect: (wall: any) => void; isSelected: boolean }> = ({ wall, onSelect, isSelected }) => {
   const [hovered, setHovered] = React.useState(false);
-  const color = wall.type === 'load_bearing' ? '#FF0000' : '#0000FF';
+  
+  // Real walls from API use standard types. Default to generic map for now.
+  const color = wall.type === 'load-bearing' ? '#EF4444' : '#3B82F6';
   const hoverColor = new THREE.Color(color).multiplyScalar(1.5).getHexString();
 
   React.useEffect(() => {
@@ -23,11 +42,15 @@ const Wall: React.FC<{ wall: WallType; onSelect: (wall: WallType) => void; isSel
     return () => { document.body.style.cursor = 'auto'; };
   }, [hovered]);
 
+  const { dimensions, position, rotation } = wall.p1 && wall.p2 
+    ? calculateWallTransform(wall.p1, wall.p2, wall.height || 3) 
+    : { dimensions: wall.dimensions, position: wall.position, rotation: wall.rotation }; // Fallback to mock
+
   return (
     <Box
-      args={wall.dimensions}
-      position={wall.position}
-      rotation={wall.rotation}
+      args={dimensions}
+      position={position}
+      rotation={rotation}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(wall);
@@ -51,21 +74,21 @@ const Wall: React.FC<{ wall: WallType; onSelect: (wall: WallType) => void; isSel
   );
 };
 
-const Scene: React.FC<{ onWallSelect: (wall: WallType) => void; selectedWallId?: string | null; }> = ({ onWallSelect, selectedWallId }) => {
+const Scene: React.FC<{ elements: any[], onWallSelect: (wall: any) => void; selectedWallId?: string | null; }> = ({ elements, onWallSelect, selectedWallId }) => {
   return (
     <>
       <ambientLight intensity={0.8} />
       <directionalLight position={[10, 20, 5]} intensity={1.5} />
       
       <Plane
-        args={[modelData.floor_slab.width, modelData.floor_slab.depth]}
+        args={[40, 40]} // Default fallback since floor_slab is mocked
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0, 0]}
       >
         <meshStandardMaterial color="#333" metalness={0.1} roughness={0.9} />
       </Plane>
       
-      {modelData.walls.map((wall) => (
+      {elements.map((wall) => (
         <Wall
           key={wall.id}
           wall={wall}
@@ -87,7 +110,7 @@ const Placeholder = () => (
     </div>
 )
 
-const ModelViewer3D: React.FC<ModelViewer3DProps> = ({ isReady, onWallSelect, selectedWallId }) => {
+const ModelViewer3D: React.FC<ModelViewer3DProps> = ({ isReady, elements = [], onWallSelect, selectedWallId }) => {
   return (
     <div className="w-full h-full relative">
       {!isReady && <Placeholder />}
@@ -96,7 +119,7 @@ const ModelViewer3D: React.FC<ModelViewer3DProps> = ({ isReady, onWallSelect, se
         style={{ background: 'transparent' }}
         onClick={() => onWallSelect(null)}
       >
-        {isReady && <Scene onWallSelect={onWallSelect} selectedWallId={selectedWallId} />}
+        {isReady && <Scene elements={elements.length > 0 ? elements : modelData.walls} onWallSelect={onWallSelect} selectedWallId={selectedWallId} />}
       </Canvas>
     </div>
   );

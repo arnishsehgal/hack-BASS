@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python-headless
+networkx
+shapely
+google-genai
+numpy
+python-dotenv

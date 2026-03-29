@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { isConnected, getPublicKey, signTransaction } from '@stellar/freighter-api';
+import { isConnected, requestAccess, getAddress, signTransaction } from '@stellar/freighter-api';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Wallet, Check, AlertTriangle, Fingerprint } from 'lucide-react';
@@ -17,11 +17,13 @@ const Web3Button: React.FC<Web3ButtonProps> = ({ is3DReady }) => {
 
   useEffect(() => {
     const checkConnection = async () => {
-      const connected = await isConnected();
+      const { isConnected: connected } = await isConnected();
       if (connected) {
-        const key = await getPublicKey();
-        setPublicKey(key);
-        setWalletConnected(true);
+        const { address: key } = await getAddress();
+        if (key) {
+          setPublicKey(key);
+          setWalletConnected(true);
+        }
       }
     };
     checkConnection();
@@ -29,24 +31,31 @@ const Web3Button: React.FC<Web3ButtonProps> = ({ is3DReady }) => {
 
   const connectWallet = async () => {
     try {
-      const connected = await isConnected();
+      const { isConnected: connected } = await isConnected();
       if (connected) {
-        toast({
-          title: "Wallet Already Connected",
-          description: "Your Freighter wallet is ready.",
-          variant: "default",
-        });
-        return;
+        const { address: existingKey } = await getAddress();
+        if (existingKey) {
+          setPublicKey(existingKey);
+          setWalletConnected(true);
+          toast({
+            title: "Wallet Already Connected",
+            description: "Your Freighter wallet is ready.",
+            variant: "default",
+          });
+          return;
+        }
       }
       
-      const key = await getPublicKey();
-      setPublicKey(key);
-      setWalletConnected(true);
-      toast({
-        title: "Wallet Connected",
-        description: `Public key: ${key.substring(0, 10)}...${key.substring(key.length - 10)}`,
-        action: <Check className="text-green-500" />,
-      });
+      const { address: key } = await requestAccess();
+      if (key) {
+        setPublicKey(key);
+        setWalletConnected(true);
+        toast({
+          title: "Wallet Connected",
+          description: `Public key: ${key.substring(0, 10)}...${key.substring(key.length - 10)}`,
+          action: <Check className="text-green-500" />,
+        });
+      }
     } catch (e) {
       toast({
         title: "Connection Failed",
