@@ -19,9 +19,17 @@ const UploadSection: React.FC<UploadSectionProps> = ({ onUpload, isProcessing, p
     onUpload(acceptedFiles);
   }, [onUpload]);
 
+  const onDropRejected = useCallback(() => {
+    alert("Unsupported file type. Please upload a PNG or JPEG image.");
+  }, []);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/png': ['.png'] },
+    onDropRejected,
+    accept: {
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+    },
     multiple: false,
   });
 
@@ -42,7 +50,7 @@ const UploadSection: React.FC<UploadSectionProps> = ({ onUpload, isProcessing, p
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
           <UploadCloud className="w-10 h-10" />
           <p className="font-semibold">
-            {isDragActive ? "Drop the file here..." : "Drag & drop a .png file or click to browse"}
+            {isDragActive ? "Drop the file here..." : "Drag & drop a PNG/JPG file or click to browse"}
           </p>
           <p className="text-xs">Max file size: 10MB</p>
         </div>

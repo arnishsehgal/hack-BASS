@@ -7,6 +7,8 @@ import ModelViewer3D from "@/components/model-viewer-3d";
 import MaterialPanel from "@/components/material-panel";
 import type { Wall } from "@/lib/mock-data";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+
 export default function Home() {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [processingStep, setProcessingStep] = React.useState(0);
@@ -29,13 +31,22 @@ export default function Home() {
       formData.append("file", files[0]);
 
       try {
-        const response = await fetch("http://localhost:8000/api/process-floorplan", {
+        const response = await fetch(`${BACKEND_URL}/api/process-floorplan`, {
           method: "POST",
           body: formData,
         });
 
         if (!response.ok) {
-           throw new Error(`HTTP error! status: ${response.status}`);
+          let backendMessage = "";
+          try {
+            const errorData = await response.json();
+            backendMessage = errorData?.message || "";
+          } catch {
+            // Ignore parse errors and fall back to HTTP status text.
+          }
+          throw new Error(
+            backendMessage || `HTTP error! status: ${response.status}`
+          );
         }
         
         setProcessingStep(1); // Graphing
@@ -54,7 +65,11 @@ export default function Home() {
         }
       } catch (error) {
         console.error("Pipeline failed:", error);
-        alert("Pipeline processing failed. Check the console or backend terminal.");
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Pipeline processing failed. Check backend terminal logs.";
+        alert(`Pipeline processing failed: ${message}`);
         setIsProcessing(false);
         setIs3DReady(false);
       }
